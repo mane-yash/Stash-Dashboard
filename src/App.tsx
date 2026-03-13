@@ -10,12 +10,10 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-const GEMINI_API_KEY = "AIzaSyBqn5J_avdc-O2H7fr3594wndrBWQXQ02c";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const BOT_PHONE_NUMBER = "917499680499"; 
-
-// 🛑 UPDATE THIS TO MATCH YOUR ACTUAL REPLIT URL
-const BACKEND_URL = "https://488c8d0f-d834-47a3-8194-0ee6cda5dcbe-00-4ikgjqqimpf6.sisko.replit.dev"; 
+const BOT_PHONE_NUMBER = import.meta.env.VITE_BOT_PHONE_NUMBER; 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function App() {
   const [userPhone, setUserPhone] = useState(localStorage.getItem('stash_user_phone') || null);
