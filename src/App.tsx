@@ -27,17 +27,24 @@ export default function App() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const [activeTab, setActiveTab] = useState('home');
+
+  // 🛑 NEW: Tracks which Folder the user is currently looking inside!
+  const [selectedFolder, setSelectedFolder] = useState(null);
+
   const [uploadState, setUploadState] = useState('idle');
   const [isHoveringUpload, setIsHoveringUpload] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   const [realFiles, setRealFiles] = useState([]);
   const [isLoadingDb, setIsLoadingDb] = useState(true);
-
-  // 🛑 NEW: Stores the names of your friends so the UI shows "Amit" instead of a phone number
   const [contacts, setContacts] = useState({});
 
   const fileInputRef = useRef(null);
+
+  // 🛑 NEW: Reset the selected folder to null whenever the user clicks a different sidebar tab
+  useEffect(() => {
+    setSelectedFolder(null);
+  }, [activeTab]);
 
   useEffect(() => {
     if (userPhone) {
@@ -62,7 +69,6 @@ export default function App() {
     try {
       setIsLoadingDb(true);
 
-      // 1. Fetch the files
       const { data: filesData, error } = await supabase
         .from('files')
         .select('*')
@@ -72,7 +78,6 @@ export default function App() {
       if (error) throw error;
       setRealFiles(filesData || []);
 
-      // 2. 🛑 NEW: Fetch the Real Names of the people who sent/received these files!
       if (filesData && filesData.length > 0) {
         const uniqueNumbers = new Set();
         filesData.forEach(f => {
@@ -90,7 +95,7 @@ export default function App() {
           usersData.forEach(u => {
             if (u.name) nameMap[u.phone_number] = u.name;
           });
-          setContacts(nameMap); // Save the names to state!
+          setContacts(nameMap); 
         }
       }
 
@@ -144,13 +149,11 @@ export default function App() {
       if (data.success) {
         const finalName = nameInput.trim();
 
-        // Save the Name and Phone to Supabase immediately after verifying OTP!
         await supabase.from('users').upsert([{ 
           phone_number: cleanPhone, 
           name: finalName 
         }], { onConflict: 'phone_number' });
 
-        // Save to state and local storage
         setUserPhone(cleanPhone);
         setUserName(finalName);
         localStorage.setItem('stash_user_phone', cleanPhone);
@@ -315,6 +318,63 @@ export default function App() {
     );
   }
 
+  // 🛑 NEW: Master function that renders either the Folders OR the files inside a selected Folder
+  const renderFolderView = (filesToGroup, title, type, emptyMsg) => {
+    // 1. If a folder is selected, show the files inside it
+    if (selectedFolder) {
+      const folderFiles = filesToGroup.filter(f => (f.subject || 'Uncategorized') === selectedFolder);
+      return (
+        <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+          <div className="flex items-center gap-4 mb-6">
+            <button 
+              onClick={() => setSelectedFolder(null)} 
+              className="text-slate-400 hover:text-white flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10 transition-all hover:bg-white/10 font-semibold text-sm shadow-sm"
+            >
+              ← Back
+            </button>
+            <h2 className="text-2xl font-bold text-white flex items-center gap-3 capitalize">
+              <Folder className="text-indigo-400 w-7 h-7" fill="currentColor" opacity={0.2} /> 
+              {selectedFolder}
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {folderFiles.map((file) => (
+              <FileCard key={file.id} file={file} type={type} contacts={contacts} />
+            ))}
+            {folderFiles.length === 0 && <p className="text-slate-500 col-span-full">No files in this folder.</p>}
+          </div>
+        </div>
+      );
+    }
+
+    // 2. If no folder is selected, group the files by Subject and show Folder Cards
+    const grouped = filesToGroup.reduce((acc, file) => {
+      const subj = file.subject || 'Uncategorized';
+      if (!acc[subj]) acc[subj] = [];
+      acc[subj].push(file);
+      return acc;
+    }, {});
+
+    const subjects = Object.keys(grouped);
+
+    return (
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <h2 className="text-2xl font-bold text-white mb-6">{title}</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {subjects.map(subj => (
+            <FolderCard 
+              key={subj} 
+              subject={subj} 
+              count={grouped[subj].length} 
+              onClick={() => setSelectedFolder(subj)} 
+            />
+          ))}
+          {subjects.length === 0 && <p className="text-slate-500 col-span-full">{emptyMsg}</p>}
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     const myUploads = realFiles.filter(f => f.phone_number === userPhone && !f.shared_by);
     const sharedWithMe = realFiles.filter(f => f.phone_number === userPhone && f.shared_by);
@@ -333,21 +393,12 @@ export default function App() {
                 </div>
                 <button onClick={() => setActiveTab('library')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">View All</button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {recentFiles.map((file) => (
-                  <div key={file.id} onClick={() => window.open(file.file_url, '_blank')} className="bg-white/5 backdrop-blur-xl rounded-xl p-3.5 flex items-center gap-3.5 border border-white/10 hover:border-indigo-500/50 cursor-pointer">
-                    <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${file.shared_by ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-indigo-500/20 text-indigo-400'}`}>
-                      {file.type === 'image' ? <ImageIcon size={20} /> : <FileText size={20} />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-slate-200 text-sm truncate">{file.file_name}</h3>
-                      <span className="uppercase tracking-wider text-[11px] text-indigo-400 font-bold block mt-0.5">{file.subject}</span>
-                      {file.shared_by && <span className="text-[10px] text-fuchsia-300 mt-1 block font-medium">Shared with you</span>}
-                    </div>
-                  </div>
+                  <FileCard key={file.id} file={file} type="recent" contacts={contacts} />
                 ))}
                 {recentFiles.length === 0 && !isLoadingDb && (
-                  <div className="col-span-3 text-center py-8 text-slate-500 bg-white/[0.02] rounded-xl border border-white/5">
+                  <div className="col-span-full text-center py-8 text-slate-500 bg-white/[0.02] rounded-xl border border-white/5">
                     No files stashed yet. Upload one below or send it via WhatsApp!
                   </div>
                 )}
@@ -374,80 +425,16 @@ export default function App() {
             </section>
           </div>
         );
+
+      // 🛑 The 3 main tabs now strictly use the Folder View logic!
       case 'library':
-        return (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-2xl font-bold text-white mb-6">My Personal Library</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {myUploads.map((file) => (
-                <div key={file.id} onClick={() => window.open(file.file_url, '_blank')} className="bg-white/5 border border-white/10 rounded-xl p-4 flex gap-4 hover:border-indigo-500/50 cursor-pointer">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-indigo-500/20 text-indigo-400">
-                    {file.type === 'image' ? <ImageIcon size={24} /> : <FileText size={24} />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-slate-200 text-sm font-semibold truncate">{file.file_name}</h3>
-                    <p className="text-[11px] text-indigo-400 font-bold uppercase mt-1">{file.subject}</p>
-                  </div>
-                </div>
-              ))}
-              {myUploads.length === 0 && <p className="text-slate-500">You haven't uploaded anything yet.</p>}
-            </div>
-          </div>
-        );
+        return renderFolderView(myUploads, "My Personal Library", "personal", "You haven't uploaded anything yet.");
       case 'shared-with':
-        return (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-2xl font-bold text-white mb-6">Shared With Me</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {sharedWithMe.map((file) => (
-                <div key={file.id} onClick={() => window.open(file.file_url, '_blank')} className="bg-white/5 border border-white/10 rounded-xl p-4 flex gap-4 hover:border-fuchsia-500/50 cursor-pointer">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-fuchsia-500/20 text-fuchsia-400">
-                    {file.type === 'image' ? <ImageIcon size={24} /> : <FileText size={24} />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-slate-200 text-sm font-semibold truncate">{file.file_name}</h3>
-                    <p className="text-[11px] text-indigo-400 font-bold uppercase mt-1">{file.subject}</p>
-                    <div className="mt-2 text-[10px] bg-fuchsia-500/10 text-fuchsia-300 font-semibold px-2 py-1 rounded-md inline-flex items-center gap-1.5 border border-fuchsia-500/20">
-                      {/* 🛑 UI Upgrade: Shows their actual Name if it exists, otherwise defaults to their phone number */}
-                      <Users size={12} /> From {contacts[file.shared_by] || '+' + file.shared_by}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {sharedWithMe.length === 0 && <p className="text-slate-500">No one has shared files with you yet.</p>}
-            </div>
-          </div>
-        );
+        return renderFolderView(sharedWithMe, "Shared With Me", "shared-with", "No one has shared files with you yet.");
       case 'shared-by':
-        return (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-2xl font-bold text-white mb-6">Shared By Me</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {sharedByMe.map((file) => (
-                <div key={file.id} onClick={() => window.open(file.file_url, '_blank')} className="bg-white/5 border border-white/10 rounded-xl p-4 flex gap-4 hover:border-emerald-500/50 cursor-pointer">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/20 text-emerald-400">
-                    {file.type === 'image' ? <ImageIcon size={24} /> : <FileText size={24} />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-slate-200 text-sm font-semibold truncate">{file.file_name}</h3>
-                    <p className="text-[11px] text-indigo-400 font-bold uppercase mt-1">{file.subject}</p>
-                    <div className="mt-2 text-[10px] bg-emerald-500/10 text-emerald-300 font-semibold px-2 py-1 rounded-md inline-flex items-center gap-1.5 border border-emerald-500/20">
-                      {/* 🛑 UI Upgrade: Shows their actual Name! */}
-                      <Send size={12} /> Sent to {contacts[file.phone_number] || '+' + file.phone_number}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {sharedByMe.length === 0 && <p className="text-slate-500">You haven't sent any files to friends yet.</p>}
-            </div>
-          </div>
-        );
+        return renderFolderView(sharedByMe, "Shared By Me", "shared-by", "You haven't sent any files to friends yet.");
       default:
-        return (
-          <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-in fade-in">
-            <h2 className="text-xl font-bold text-slate-300 capitalize">{activeTab.replace('-', ' ')}</h2>
-          </div>
-        );
+        return null;
     }
   };
 
@@ -484,7 +471,7 @@ export default function App() {
       </aside>
 
       <main className="flex-1 flex flex-col p-8 gap-8 z-10">
-        <div className="w-full bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between px-4 py-3 backdrop-blur-xl">
+        <div className="w-full bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between px-4 py-3 backdrop-blur-xl shrink-0">
           <div className="flex items-center flex-1">
             <Search className="text-slate-400 w-5 h-5 mr-3" />
             <input type="text" placeholder="Search your stash with AI..." className="bg-transparent outline-none w-full text-white" />
@@ -493,7 +480,7 @@ export default function App() {
             <User size={16} /> Hey, {userName || userPhone} 👋
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-8">
           {renderContent()}
         </div>
       </main>
@@ -501,9 +488,93 @@ export default function App() {
   );
 }
 
+// 🛑 NEW: BEAUTIFUL FOLDER CARD COMPONENT
+function FolderCard({ subject, count, onClick }) {
+  return (
+    <div 
+      onClick={onClick} 
+      className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col hover:border-indigo-500/50 hover:bg-white/10 cursor-pointer transition-all h-full min-h-[160px] shadow-sm group"
+    >
+      <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-indigo-500/10 text-indigo-400 mb-4 shrink-0 border border-indigo-500/20 group-hover:bg-indigo-500/20 transition-colors">
+        <Folder size={28} fill="currentColor" className="opacity-80" />
+      </div>
+
+      <div className="flex flex-col flex-1 mt-auto">
+        <h3 className="font-bold text-white text-lg leading-snug mb-1 truncate capitalize">
+          {subject}
+        </h3>
+        <p className="text-sm font-semibold text-indigo-300">
+          {count} {count === 1 ? 'file' : 'files'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// --- CLEAN UI FILE CARD COMPONENT ---
+function FileCard({ file, type, contacts }) {
+  const dateStr = file.created_at 
+    ? new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
+    : 'Unknown Date';
+
+  let sharedBadge = (
+    <span className="text-xs font-semibold text-slate-300 bg-slate-700/50 px-2.5 py-1 rounded-md border border-slate-600/50 w-fit mt-1">
+      Personal
+    </span>
+  );
+
+  if (type === 'shared-with' || (type === 'recent' && file.shared_by)) {
+    sharedBadge = (
+      <span className="text-xs font-bold text-fuchsia-300 bg-fuchsia-500/20 px-2.5 py-1 rounded-md border border-fuchsia-500/30 w-fit mt-1">
+        Shared by {contacts[file.shared_by] || '+' + file.shared_by}
+      </span>
+    );
+  } else if (type === 'shared-by') {
+    sharedBadge = (
+      <span className="text-xs font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-md border border-emerald-500/30 w-fit mt-1">
+        Sent to {contacts[file.phone_number] || '+' + file.phone_number}
+      </span>
+    );
+  }
+
+  const displayTitle = file.topic && file.topic !== 'General' 
+    ? file.topic 
+    : `${file.subject || 'Document'} Notes`;
+
+  return (
+    <div 
+      onClick={() => window.open(file.file_url, '_blank')} 
+      className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col hover:border-indigo-500/50 hover:bg-white/10 cursor-pointer transition-all h-full min-h-[220px]"
+    >
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-500/20 text-indigo-400 mb-4 shrink-0 shadow-sm border border-indigo-500/20">
+        {file.type === 'image' ? <ImageIcon size={24} /> : <FileText size={24} />}
+      </div>
+
+      <div className="flex flex-col flex-1">
+        <h3 className="font-bold text-white text-base leading-snug mb-1.5 line-clamp-2 capitalize">
+          {displayTitle}
+        </h3>
+
+        <p className="text-sm font-semibold text-indigo-300 mb-1 flex items-center gap-2">
+          <span className="truncate">{file.subject || 'Uncategorized'}</span>
+          <span className="text-[9px] bg-white/10 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">
+            {file.type === 'image' ? 'IMG' : 'PDF'}
+          </span>
+        </p>
+
+        {sharedBadge}
+      </div>
+
+      <div className="mt-auto pt-4 border-t border-white/10">
+        <p className="text-xs text-slate-400 font-medium">{dateStr}</p>
+      </div>
+    </div>
+  );
+}
+
 function NavItem({ icon, label, active, onClick }) {
   return (
-    <button onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${active ? 'bg-indigo-500/10 text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'}`}>
+    <button onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${active ? 'bg-indigo-500/10 text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}>
       {icon} <span>{label}</span>
     </button>
   );
