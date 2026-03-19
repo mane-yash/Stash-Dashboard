@@ -6,7 +6,8 @@ import {
   Home, BookOpen, Share2, Send, Users, Trash2,
   Search, Plus, FileText, Image as ImageIcon,
   Loader, CheckCircle, File, Sparkles, Folder,
-  MoreHorizontal, CloudLightning, Phone, LogOut, User 
+  MoreHorizontal, CloudLightning, Phone, LogOut, User,
+  Menu, X // 🛑 ADDED THESE FOR MOBILE
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
@@ -27,8 +28,8 @@ export default function App() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const [activeTab, setActiveTab] = useState('home');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // 🛑 NEW MOBILE STATE
 
-  // 🛑 NEW: Tracks which Folder the user is currently looking inside!
   const [selectedFolder, setSelectedFolder] = useState(null);
 
   const [uploadState, setUploadState] = useState('idle');
@@ -41,7 +42,6 @@ export default function App() {
 
   const fileInputRef = useRef(null);
 
-  // 🛑 NEW: Reset the selected folder to null whenever the user clicks a different sidebar tab
   useEffect(() => {
     setSelectedFolder(null);
   }, [activeTab]);
@@ -256,9 +256,9 @@ export default function App() {
 
   if (!userPhone) {
     return (
-      <div className="flex h-screen w-full bg-[#09090b] items-center justify-center relative overflow-hidden">
+      <div className="flex h-screen w-full bg-[#09090b] items-center justify-center relative overflow-hidden p-4">
         <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-indigo-600/20 blur-[120px]" />
-        <div className="bg-white/5 border border-white/10 p-10 rounded-3xl backdrop-blur-xl w-full max-w-md z-10 text-center shadow-2xl">
+        <div className="bg-white/5 border border-white/10 p-8 md:p-10 rounded-3xl backdrop-blur-xl w-full max-w-md z-10 text-center shadow-2xl">
           <div className="flex justify-center mb-6">
             <div className="bg-indigo-500/20 p-4 rounded-full">
               <CloudLightning className="text-indigo-400 w-12 h-12" />
@@ -318,9 +318,7 @@ export default function App() {
     );
   }
 
-  // 🛑 NEW: Master function that renders either the Folders OR the files inside a selected Folder
   const renderFolderView = (filesToGroup, title, type, emptyMsg) => {
-    // 1. If a folder is selected, show the files inside it
     if (selectedFolder) {
       const folderFiles = filesToGroup.filter(f => (f.subject || 'Uncategorized') === selectedFolder);
       return (
@@ -332,12 +330,13 @@ export default function App() {
             >
               ← Back
             </button>
-            <h2 className="text-2xl font-bold text-white flex items-center gap-3 capitalize">
-              <Folder className="text-indigo-400 w-7 h-7" fill="currentColor" opacity={0.2} /> 
+            <h2 className="text-2xl font-bold text-white flex items-center gap-3 capitalize truncate">
+              <Folder className="text-indigo-400 w-7 h-7 shrink-0" fill="currentColor" opacity={0.2} /> 
               {selectedFolder}
             </h2>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {/* 🛑 MOBILE GRID FIX: cols-1 for phone, sm:cols-2 for tablet, lg:cols-4 for desktop */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {folderFiles.map((file) => (
               <FileCard key={file.id} file={file} type={type} contacts={contacts} />
             ))}
@@ -347,7 +346,6 @@ export default function App() {
       );
     }
 
-    // 2. If no folder is selected, group the files by Subject and show Folder Cards
     const grouped = filesToGroup.reduce((acc, file) => {
       const subj = file.subject || 'Uncategorized';
       if (!acc[subj]) acc[subj] = [];
@@ -360,7 +358,8 @@ export default function App() {
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-2xl font-bold text-white mb-6">{title}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {/* 🛑 MOBILE GRID FIX */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {subjects.map(subj => (
             <FolderCard 
               key={subj} 
@@ -393,7 +392,8 @@ export default function App() {
                 </div>
                 <button onClick={() => setActiveTab('library')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">View All</button>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {/* 🛑 MOBILE GRID FIX */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {recentFiles.map((file) => (
                   <FileCard key={file.id} file={file} type="recent" contacts={contacts} />
                 ))}
@@ -409,10 +409,10 @@ export default function App() {
               <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
               <div onClick={handleUploadClick} onMouseEnter={() => setIsHoveringUpload(true)} onMouseLeave={() => setIsHoveringUpload(false)} className={`flex-1 w-full rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all duration-500 relative overflow-hidden backdrop-blur-xl ${uploadState === 'idle' ? 'bg-white/5 border-2 border-dashed border-white/20 hover:border-indigo-500/50' : uploadState === 'uploading' ? 'bg-gradient-to-br from-indigo-500/10 to-fuchsia-500/10 border-2 border-indigo-500/30' : 'bg-emerald-500/10 border-2 border-emerald-500/30'}`}>
                 {uploadState === 'idle' && (
-                  <div className="flex flex-col items-center z-10 text-center">
+                  <div className="flex flex-col items-center z-10 text-center px-4">
                     <Plus size={48} className={`text-indigo-400 mb-4 transition-transform duration-500 ${isHoveringUpload ? 'rotate-90 scale-110' : ''}`} />
                     <h2 className="text-2xl font-bold text-white mb-2">Stash a new file</h2>
-                    <p className="text-slate-400 px-8 text-sm">Click to upload. AI will automatically scan and categorize it.</p>
+                    <p className="text-slate-400 px-2 md:px-8 text-sm">Click to upload. AI will automatically scan and categorize it.</p>
                   </div>
                 )}
                 {uploadState === 'uploading' && (
@@ -426,7 +426,6 @@ export default function App() {
           </div>
         );
 
-      // 🛑 The 3 main tabs now strictly use the Folder View logic!
       case 'library':
         return renderFolderView(myUploads, "My Personal Library", "personal", "You haven't uploaded anything yet.");
       case 'shared-with':
@@ -439,25 +438,44 @@ export default function App() {
   };
 
   return (
-    <div onMouseMove={handleMouseMove} className="flex h-screen w-full bg-[#09090b] text-slate-200 font-sans overflow-hidden relative z-0">
+    // 🛑 RESPONSIVE WRAPPER (flex-col for mobile, flex-row for laptop)
+    <div onMouseMove={handleMouseMove} className="flex flex-col md:flex-row h-screen w-full bg-[#09090b] text-slate-200 font-sans overflow-hidden relative z-0">
+
+      {/* Background Orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/30 blur-[120px] pointer-events-none -z-10" style={{ transform: `translate(${mousePos.x * 40}px, ${mousePos.y * 40}px)` }} />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-fuchsia-600/20 blur-[120px] pointer-events-none -z-10" style={{ transform: `translate(${mousePos.x * -50}px, ${mousePos.y * -50}px)` }} />
 
-      <aside className="w-[260px] bg-white/[0.02] border-r border-white/10 p-6 flex flex-col z-10 backdrop-blur-2xl">
-        <div className="mb-10 pl-2 flex items-center gap-3">
+      {/* 🛑 MOBILE TOP HEADER WITH HAMBURGER (Hidden on desktop) */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-white/5 border-b border-white/10 z-40 backdrop-blur-xl shrink-0">
+        <div className="flex items-center gap-2">
+          <CloudLightning className="text-indigo-400 w-6 h-6" />
+          <span className="font-bold text-xl text-white">Stash</span>
+        </div>
+        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-white p-1">
+          {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+        </button>
+      </div>
+
+      {/* 🛑 RESPONSIVE SIDEBAR */}
+      <aside className={`
+        fixed md:static inset-y-0 left-0 z-50 w-[260px] bg-[#09090b] md:bg-white/[0.02] border-r border-white/10 p-6 flex flex-col backdrop-blur-2xl transition-transform duration-300
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
+        md:translate-x-0
+      `}>
+        <div className="mb-10 pl-2 hidden md:flex items-center gap-3">
           <CloudLightning className="text-indigo-400 w-8 h-8" />
           <span className="font-bold text-2xl text-white">Stash</span>
         </div>
 
-        <nav className="flex flex-col gap-2">
-          <NavItem icon={<Home size={18} />} label="Home" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
-          <NavItem icon={<BookOpen size={18} />} label="My Library" active={activeTab === 'library'} onClick={() => setActiveTab('library')} />
-          <NavItem icon={<Share2 size={18} />} label="Shared with me" active={activeTab === 'shared-with'} onClick={() => setActiveTab('shared-with')} />
-          <NavItem icon={<Send size={18} />} label="Shared by me" active={activeTab === 'shared-by'} onClick={() => setActiveTab('shared-by')} />
+        <nav className="flex flex-col gap-2 mt-12 md:mt-0">
+          <NavItem icon={<Home size={18} />} label="Home" active={activeTab === 'home'} onClick={() => { setActiveTab('home'); setIsMobileMenuOpen(false); }} />
+          <NavItem icon={<BookOpen size={18} />} label="My Library" active={activeTab === 'library'} onClick={() => { setActiveTab('library'); setIsMobileMenuOpen(false); }} />
+          <NavItem icon={<Share2 size={18} />} label="Shared with me" active={activeTab === 'shared-with'} onClick={() => { setActiveTab('shared-with'); setIsMobileMenuOpen(false); }} />
+          <NavItem icon={<Send size={18} />} label="Shared by me" active={activeTab === 'shared-by'} onClick={() => { setActiveTab('shared-by'); setIsMobileMenuOpen(false); }} />
         </nav>
 
         <div className="mt-auto pt-8 flex flex-col gap-3">
-          <div className="bg-[#25D366]/10 border border-[#25D366]/20 rounded-xl p-4 text-center">
+          <div className="bg-[#25D366]/10 border border-[#25D366]/20 rounded-xl p-4 text-center hidden md:block">
             <h4 className="text-[#25D366] font-bold text-sm mb-2">Stash on the go</h4>
             <p className="text-slate-400 text-xs mb-4">Send links and files directly to our AI WhatsApp bot.</p>
             <button onClick={() => window.open(`https://wa.me/${BOT_PHONE_NUMBER}?text=Hey%20Stash!`, '_blank')} className="w-full bg-[#25D366] hover:bg-[#20b858] text-gray-900 font-bold py-2 rounded-lg text-sm transition-all">
@@ -470,25 +488,36 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col p-8 gap-8 z-10">
-        <div className="w-full bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between px-4 py-3 backdrop-blur-xl shrink-0">
+      {/* 🛑 MOBILE OVERLAY (Darkens background when menu is open) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
+
+      {/* 🛑 MAIN CONTENT AREA */}
+      <main className="flex-1 flex flex-col p-4 md:p-8 gap-4 md:gap-8 z-10 w-full overflow-hidden">
+
+        {/* Search Header */}
+        <div className="w-full bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between px-3 md:px-4 py-3 backdrop-blur-xl shrink-0">
           <div className="flex items-center flex-1">
-            <Search className="text-slate-400 w-5 h-5 mr-3" />
-            <input type="text" placeholder="Search your stash with AI..." className="bg-transparent outline-none w-full text-white" />
+            <Search className="text-slate-400 w-5 h-5 mr-3 shrink-0" />
+            <input type="text" placeholder="Search your stash..." className="bg-transparent outline-none w-full text-white text-sm" />
           </div>
-          <div className="text-sm font-semibold text-indigo-300 bg-indigo-500/10 px-4 py-2 rounded-lg border border-indigo-500/20 flex items-center gap-2">
+          <div className="hidden md:flex text-sm font-semibold text-indigo-300 bg-indigo-500/10 px-4 py-2 rounded-lg border border-indigo-500/20 items-center gap-2 ml-4">
             <User size={16} /> Hey, {userName || userPhone} 👋
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto pb-8">
+
+        {/* Scrollable List */}
+        <div className="flex-1 overflow-y-auto pb-20 md:pb-8">
           {renderContent()}
         </div>
+
       </main>
     </div>
   );
 }
 
-// 🛑 NEW: BEAUTIFUL FOLDER CARD COMPONENT
+// 🛑 BEAUTIFUL FOLDER CARD COMPONENT
 function FolderCard({ subject, count, onClick }) {
   return (
     <div 
@@ -511,7 +540,7 @@ function FolderCard({ subject, count, onClick }) {
   );
 }
 
-// --- CLEAN UI FILE CARD COMPONENT ---
+// 🛑 CLEAN UI FILE CARD COMPONENT
 function FileCard({ file, type, contacts }) {
   const dateStr = file.created_at 
     ? new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
@@ -525,13 +554,13 @@ function FileCard({ file, type, contacts }) {
 
   if (type === 'shared-with' || (type === 'recent' && file.shared_by)) {
     sharedBadge = (
-      <span className="text-xs font-bold text-fuchsia-300 bg-fuchsia-500/20 px-2.5 py-1 rounded-md border border-fuchsia-500/30 w-fit mt-1">
+      <span className="text-xs font-bold text-fuchsia-300 bg-fuchsia-500/20 px-2.5 py-1 rounded-md border border-fuchsia-500/30 w-fit mt-1 truncate max-w-full">
         Shared by {contacts[file.shared_by] || '+' + file.shared_by}
       </span>
     );
   } else if (type === 'shared-by') {
     sharedBadge = (
-      <span className="text-xs font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-md border border-emerald-500/30 w-fit mt-1">
+      <span className="text-xs font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-md border border-emerald-500/30 w-fit mt-1 truncate max-w-full">
         Sent to {contacts[file.phone_number] || '+' + file.phone_number}
       </span>
     );
@@ -555,7 +584,7 @@ function FileCard({ file, type, contacts }) {
           {displayTitle}
         </h3>
 
-        <p className="text-sm font-semibold text-indigo-300 mb-1 flex items-center gap-2">
+        <p className="text-sm font-semibold text-indigo-300 mb-1 flex items-center gap-2 overflow-hidden">
           <span className="truncate">{file.subject || 'Uncategorized'}</span>
           <span className="text-[9px] bg-white/10 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">
             {file.type === 'image' ? 'IMG' : 'PDF'}
@@ -574,7 +603,7 @@ function FileCard({ file, type, contacts }) {
 
 function NavItem({ icon, label, active, onClick }) {
   return (
-    <button onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${active ? 'bg-indigo-500/10 text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}>
+    <button onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all w-full text-left ${active ? 'bg-indigo-500/10 text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}>
       {icon} <span>{label}</span>
     </button>
   );
