@@ -7,14 +7,14 @@ import {
   Search, Plus, FileText, Image as ImageIcon,
   Loader, CheckCircle, File, Sparkles, Folder,
   MoreHorizontal, CloudLightning, Phone, LogOut, User,
-  Menu, X // 🛑 ADDED THESE FOR MOBILE
+  Menu, X
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const BOT_PHONE_NUMBER = import.meta.env.VITE_BOT_PHONE_NUMBER; 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const BACKEND_URL = "https://placentate-nonemotionally-lon.ngrok-free.dev";
 
 export default function App() {
   const [userPhone, setUserPhone] = useState(localStorage.getItem('stash_user_phone') || null);
@@ -28,7 +28,7 @@ export default function App() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const [activeTab, setActiveTab] = useState('home');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // 🛑 NEW MOBILE STATE
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [selectedFolder, setSelectedFolder] = useState(null);
 
@@ -39,6 +39,9 @@ export default function App() {
   const [realFiles, setRealFiles] = useState([]);
   const [isLoadingDb, setIsLoadingDb] = useState(true);
   const [contacts, setContacts] = useState({});
+
+  // 🛑 NEW: State for the Onboarding Popup
+  const [showOnboardingPopup, setShowOnboardingPopup] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -161,6 +164,9 @@ export default function App() {
 
         setShowOtpScreen(false);
         setOtpInput('');
+
+        // 🛑 NEW: Trigger the popup exactly when they successfully log in
+        setShowOnboardingPopup(true);
       } else {
         alert("Invalid OTP code! Please try again.");
       }
@@ -168,6 +174,38 @@ export default function App() {
       alert("Error verifying OTP.");
     }
     setIsAuthenticating(false);
+  };
+
+  // 🛑 NEW: The trigger function for the backend
+  const triggerWhatsAppMessage = async (delayAmount) => {
+    try {
+      await fetch(`${BACKEND_URL}/api/trigger-onboarding`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420"
+        },
+        body: JSON.stringify({ 
+          phone: userPhone, 
+          delay: delayAmount 
+        })
+      });
+      console.log(`Triggered message with ${delayAmount}s delay.`);
+    } catch (error) {
+      console.error("Failed to trigger onboarding message", error);
+    }
+  };
+
+  // 🛑 NEW: Actions for the Popup buttons
+  const handleOpenWhatsAppClick = () => {
+    setShowOnboardingPopup(false); 
+    triggerWhatsAppMessage(0); // Instantly send message
+    window.open(`https://wa.me/${BOT_PHONE_NUMBER}`, "_blank"); 
+  };
+
+  const handleClosePopup = () => {
+    setShowOnboardingPopup(false); 
+    triggerWhatsAppMessage(15); // Wait 15 seconds to send message
   };
 
   const handleLogout = () => {
@@ -335,7 +373,6 @@ export default function App() {
               {selectedFolder}
             </h2>
           </div>
-          {/* 🛑 MOBILE GRID FIX: cols-1 for phone, sm:cols-2 for tablet, lg:cols-4 for desktop */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {folderFiles.map((file) => (
               <FileCard key={file.id} file={file} type={type} contacts={contacts} />
@@ -358,7 +395,6 @@ export default function App() {
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-2xl font-bold text-white mb-6">{title}</h2>
-        {/* 🛑 MOBILE GRID FIX */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {subjects.map(subj => (
             <FolderCard 
@@ -392,7 +428,6 @@ export default function App() {
                 </div>
                 <button onClick={() => setActiveTab('library')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">View All</button>
               </div>
-              {/* 🛑 MOBILE GRID FIX */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {recentFiles.map((file) => (
                   <FileCard key={file.id} file={file} type="recent" contacts={contacts} />
@@ -438,14 +473,13 @@ export default function App() {
   };
 
   return (
-    // 🛑 RESPONSIVE WRAPPER (flex-col for mobile, flex-row for laptop)
     <div onMouseMove={handleMouseMove} className="flex flex-col md:flex-row h-screen w-full bg-[#09090b] text-slate-200 font-sans overflow-hidden relative z-0">
 
       {/* Background Orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/30 blur-[120px] pointer-events-none -z-10" style={{ transform: `translate(${mousePos.x * 40}px, ${mousePos.y * 40}px)` }} />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-fuchsia-600/20 blur-[120px] pointer-events-none -z-10" style={{ transform: `translate(${mousePos.x * -50}px, ${mousePos.y * -50}px)` }} />
 
-      {/* 🛑 MOBILE TOP HEADER WITH HAMBURGER (Hidden on desktop) */}
+      {/* Mobile Top Header */}
       <div className="md:hidden flex items-center justify-between p-4 bg-white/5 border-b border-white/10 z-40 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-2">
           <CloudLightning className="text-indigo-400 w-6 h-6" />
@@ -456,7 +490,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* 🛑 RESPONSIVE SIDEBAR */}
+      {/* Responsive Sidebar */}
       <aside className={`
         fixed md:static inset-y-0 left-0 z-50 w-[260px] bg-[#09090b] md:bg-white/[0.02] border-r border-white/10 p-6 flex flex-col backdrop-blur-2xl transition-transform duration-300
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
@@ -477,7 +511,7 @@ export default function App() {
         <div className="mt-auto pt-8 flex flex-col gap-3">
           <div className="bg-[#25D366]/10 border border-[#25D366]/20 rounded-xl p-4 text-center hidden md:block">
             <h4 className="text-[#25D366] font-bold text-sm mb-2">Stash on the go</h4>
-            <p className="text-slate-400 text-xs mb-4">Send links and files directly to our AI WhatsApp bot.</p>
+            <p className="text-slate-400 text-xs mb-4">Send study material directly to our AI WhatsApp bot.</p>
             <button onClick={() => window.open(`https://wa.me/${BOT_PHONE_NUMBER}?text=Hey%20Stash!`, '_blank')} className="w-full bg-[#25D366] hover:bg-[#20b858] text-gray-900 font-bold py-2 rounded-lg text-sm transition-all">
               Open WhatsApp
             </button>
@@ -488,13 +522,13 @@ export default function App() {
         </div>
       </aside>
 
-      {/* 🛑 MOBILE OVERLAY (Darkens background when menu is open) */}
+      {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      {/* 🛑 MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col p-4 md:p-8 gap-4 md:gap-8 z-10 w-full overflow-hidden">
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col p-4 md:p-8 gap-4 md:gap-8 z-10 w-full overflow-hidden relative">
 
         {/* Search Header */}
         <div className="w-full bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between px-3 md:px-4 py-3 backdrop-blur-xl shrink-0">
@@ -512,12 +546,43 @@ export default function App() {
           {renderContent()}
         </div>
 
+        {/* 🛑 NEW: The Onboarding Popup Overlay */}
+        {showOnboardingPopup && (
+          <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+            <div className="bg-[#1E1E2E] border border-white/10 rounded-2xl p-8 max-w-sm w-full text-center relative shadow-2xl animate-in zoom-in-95 duration-300">
+
+              <button 
+                onClick={handleClosePopup} 
+                className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="bg-[#25D366]/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CloudLightning className="text-[#25D366] w-8 h-8" />
+              </div>
+
+              <h2 className="text-2xl font-bold text-white mb-2">Stash on the go ⚡</h2>
+              <p className="text-slate-400 mb-6">Send study material directly to our AI WhatsApp bot.</p>
+
+              <button 
+                onClick={handleOpenWhatsAppClick}
+                className="w-full bg-[#25D366] hover:bg-[#20b858] text-gray-900 font-bold py-3 rounded-xl transition-all shadow-lg shadow-[#25D366]/20"
+              >
+                Open WhatsApp
+              </button>
+
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );
 }
 
-// 🛑 BEAUTIFUL FOLDER CARD COMPONENT
+// Folder Card Component
 function FolderCard({ subject, count, onClick }) {
   return (
     <div 
@@ -540,11 +605,14 @@ function FolderCard({ subject, count, onClick }) {
   );
 }
 
-// 🛑 CLEAN UI FILE CARD COMPONENT
+// File Card Component
 function FileCard({ file, type, contacts }) {
   const dateStr = file.created_at 
     ? new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
     : 'Unknown Date';
+
+  // 🛑 THE FIX: Smart check! If 'type' is missing, check the file name extension for images
+  const isImage = file.type === 'image' || (file.file_name && /\.(jpg|jpeg|png|gif|webp)$/i.test(file.file_name));
 
   let sharedBadge = (
     <span className="text-xs font-semibold text-slate-300 bg-slate-700/50 px-2.5 py-1 rounded-md border border-slate-600/50 w-fit mt-1">
@@ -575,8 +643,9 @@ function FileCard({ file, type, contacts }) {
       onClick={() => window.open(file.file_url, '_blank')} 
       className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col hover:border-indigo-500/50 hover:bg-white/10 cursor-pointer transition-all h-full min-h-[220px]"
     >
+      {/* 🛑 Updated Icon Check */}
       <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-500/20 text-indigo-400 mb-4 shrink-0 shadow-sm border border-indigo-500/20">
-        {file.type === 'image' ? <ImageIcon size={24} /> : <FileText size={24} />}
+        {isImage ? <ImageIcon size={24} /> : <FileText size={24} />}
       </div>
 
       <div className="flex flex-col flex-1">
@@ -586,8 +655,10 @@ function FileCard({ file, type, contacts }) {
 
         <p className="text-sm font-semibold text-indigo-300 mb-1 flex items-center gap-2 overflow-hidden">
           <span className="truncate">{file.subject || 'Uncategorized'}</span>
+
+          {/* 🛑 Updated Badge Check */}
           <span className="text-[9px] bg-white/10 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">
-            {file.type === 'image' ? 'IMG' : 'PDF'}
+            {isImage ? 'IMG' : 'PDF'}
           </span>
         </p>
 
