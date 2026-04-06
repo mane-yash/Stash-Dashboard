@@ -1,38 +1,59 @@
-import React, { useState, useEffect, useRef } from 'react';
-import './App.css'; 
-import { supabase } from './supabaseClient'; 
+import React, { useState, useEffect, useRef } from "react";
+import "./App.css";
+import { supabase } from "./supabaseClient";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
-  Home, BookOpen, Share2, Send, Users, Trash2,
-  Search, Plus, FileText, Image as ImageIcon,
-  Loader, CheckCircle, File, Sparkles, Folder,
-  MoreHorizontal, CloudLightning, Phone, LogOut, User,
-  Menu, X
-} from 'lucide-react';
+  Home,
+  BookOpen,
+  Share2,
+  Send,
+  Users,
+  Trash2,
+  Search,
+  Plus,
+  FileText,
+  Image as ImageIcon,
+  Loader,
+  CheckCircle,
+  File,
+  Sparkles,
+  Folder,
+  MoreHorizontal,
+  CloudLightning,
+  Phone,
+  LogOut,
+  User,
+  Menu,
+  X,
+} from "lucide-react";
 
 // --- CONFIGURATION ---
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const BOT_PHONE_NUMBER = import.meta.env.VITE_BOT_PHONE_NUMBER; 
+const BOT_PHONE_NUMBER = import.meta.env.VITE_BOT_PHONE_NUMBER;
 const BACKEND_URL = "https://placentate-nonemotionally-lon.ngrok-free.dev";
 
 export default function App() {
-  const [userPhone, setUserPhone] = useState(localStorage.getItem('stash_user_phone') || null);
-  const [userName, setUserName] = useState(localStorage.getItem('stash_user_name') || null);
+  const [userPhone, setUserPhone] = useState(
+    localStorage.getItem("stash_user_phone") || null,
+  );
+  const [userName, setUserName] = useState(
+    localStorage.getItem("stash_user_name") || null,
+  );
 
-  const [loginInput, setLoginInput] = useState('');
-  const [nameInput, setNameInput] = useState(''); 
+  const [loginInput, setLoginInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
 
   const [showOtpScreen, setShowOtpScreen] = useState(false);
-  const [otpInput, setOtpInput] = useState('');
+  const [otpInput, setOtpInput] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState("home");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [selectedFolder, setSelectedFolder] = useState(null);
 
-  const [uploadState, setUploadState] = useState('idle');
+  const [uploadState, setUploadState] = useState("idle");
   const [isHoveringUpload, setIsHoveringUpload] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -54,12 +75,19 @@ export default function App() {
       fetchMyStash();
 
       const subscription = supabase
-        .channel('public:files')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'files' }, (payload) => {
-          if (payload.new.phone_number === userPhone || payload.new.shared_by === userPhone) {
-            fetchMyStash(); 
-          }
-        })
+        .channel("public:files")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "files" },
+          (payload) => {
+            if (
+              payload.new.phone_number === userPhone ||
+              payload.new.shared_by === userPhone
+            ) {
+              fetchMyStash();
+            }
+          },
+        )
         .subscribe();
 
       return () => {
@@ -73,35 +101,34 @@ export default function App() {
       setIsLoadingDb(true);
 
       const { data: filesData, error } = await supabase
-        .from('files')
-        .select('*')
-        .or(`phone_number.eq.${userPhone},shared_by.eq.${userPhone}`) 
-        .order('created_at', { ascending: false });
+        .from("files")
+        .select("*")
+        .or(`phone_number.eq.${userPhone},shared_by.eq.${userPhone}`)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setRealFiles(filesData || []);
 
       if (filesData && filesData.length > 0) {
         const uniqueNumbers = new Set();
-        filesData.forEach(f => {
+        filesData.forEach((f) => {
           if (f.phone_number) uniqueNumbers.add(f.phone_number);
           if (f.shared_by) uniqueNumbers.add(f.shared_by);
         });
 
         const { data: usersData } = await supabase
-          .from('users')
-          .select('phone_number, name')
-          .in('phone_number', Array.from(uniqueNumbers));
+          .from("users")
+          .select("phone_number, name")
+          .in("phone_number", Array.from(uniqueNumbers));
 
         if (usersData) {
           const nameMap = {};
-          usersData.forEach(u => {
+          usersData.forEach((u) => {
             if (u.name) nameMap[u.phone_number] = u.name;
           });
-          setContacts(nameMap); 
+          setContacts(nameMap);
         }
       }
-
     } catch (error) {
       console.error("Error fetching files:", error);
     } finally {
@@ -113,15 +140,16 @@ export default function App() {
     e.preventDefault();
     if (!nameInput.trim()) return alert("Please enter your name first!");
 
-    const cleanPhone = loginInput.replace(/\D/g, ''); 
-    if (cleanPhone.length < 5) return alert("Please enter a valid phone number.");
+    const cleanPhone = loginInput.replace(/\D/g, "");
+    if (cleanPhone.length < 5)
+      return alert("Please enter a valid phone number.");
 
     setIsAuthenticating(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/send-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanPhone })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: cleanPhone }),
       });
       const data = await res.json();
 
@@ -131,39 +159,46 @@ export default function App() {
         alert("Failed to send OTP.");
       }
     } catch (err) {
-      alert("Error connecting to backend. Is your Replit running and URL correct?");
+      alert(
+        "Error connecting to backend. Is your Replit running and URL correct?",
+      );
     }
     setIsAuthenticating(false);
   };
 
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
-    const cleanPhone = loginInput.replace(/\D/g, '');
+    const cleanPhone = loginInput.replace(/\D/g, "");
 
     setIsAuthenticating(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanPhone, otp: otpInput })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: cleanPhone, otp: otpInput }),
       });
       const data = await res.json();
 
       if (data.success) {
         const finalName = nameInput.trim();
 
-        await supabase.from('users').upsert([{ 
-          phone_number: cleanPhone, 
-          name: finalName 
-        }], { onConflict: 'phone_number' });
+        await supabase.from("users").upsert(
+          [
+            {
+              phone_number: cleanPhone,
+              name: finalName,
+            },
+          ],
+          { onConflict: "phone_number" },
+        );
 
         setUserPhone(cleanPhone);
         setUserName(finalName);
-        localStorage.setItem('stash_user_phone', cleanPhone);
-        localStorage.setItem('stash_user_name', finalName);
+        localStorage.setItem("stash_user_phone", cleanPhone);
+        localStorage.setItem("stash_user_name", finalName);
 
         setShowOtpScreen(false);
-        setOtpInput('');
+        setOtpInput("");
 
         // 🛑 NEW: Trigger the popup exactly when they successfully log in
         setShowOnboardingPopup(true);
@@ -181,14 +216,14 @@ export default function App() {
     try {
       await fetch(`${BACKEND_URL}/api/trigger-onboarding`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420"
+          "ngrok-skip-browser-warning": "69420",
         },
-        body: JSON.stringify({ 
-          phone: userPhone, 
-          delay: delayAmount 
-        })
+        body: JSON.stringify({
+          phone: userPhone,
+          delay: delayAmount,
+        }),
       });
       console.log(`Triggered message with ${delayAmount}s delay.`);
     } catch (error) {
@@ -198,21 +233,21 @@ export default function App() {
 
   // 🛑 NEW: Actions for the Popup buttons
   const handleOpenWhatsAppClick = () => {
-    setShowOnboardingPopup(false); 
+    setShowOnboardingPopup(false);
     triggerWhatsAppMessage(0); // Instantly send message
-    window.open(`https://wa.me/${BOT_PHONE_NUMBER}`, "_blank"); 
+    window.open(`https://wa.me/${BOT_PHONE_NUMBER}`, "_blank");
   };
 
   const handleClosePopup = () => {
-    setShowOnboardingPopup(false); 
+    setShowOnboardingPopup(false);
     triggerWhatsAppMessage(15); // Wait 15 seconds to send message
   };
 
   const handleLogout = () => {
     setUserPhone(null);
     setUserName(null);
-    localStorage.removeItem('stash_user_phone');
-    localStorage.removeItem('stash_user_name');
+    localStorage.removeItem("stash_user_phone");
+    localStorage.removeItem("stash_user_name");
     setRealFiles([]);
     setShowOtpScreen(false);
   };
@@ -229,8 +264,8 @@ export default function App() {
   };
 
   const handleUploadClick = () => {
-    if (uploadState !== 'idle') return;
-    fileInputRef.current?.click(); 
+    if (uploadState !== "idle") return;
+    fileInputRef.current?.click();
   };
 
   const handleFileChange = async (event) => {
@@ -238,7 +273,7 @@ export default function App() {
     if (!file) return;
 
     try {
-      setUploadState('uploading');
+      setUploadState("uploading");
 
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
       const prompt = `You are an AI assistant for students. Analyze this document/image. 
@@ -249,40 +284,42 @@ export default function App() {
       const result = await model.generateContent([prompt, imagePart]);
       const response = await result.response;
 
-      const text = response.text().replace(/```json|```/g, "").trim(); 
+      const text = response
+        .text()
+        .replace(/```json|```/g, "")
+        .trim();
       const metadata = JSON.parse(text);
 
       const uniqueFileName = `${Date.now()}_${file.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('stash_files')
+        .from("stash_files")
         .upload(uniqueFileName, file);
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('stash_files')
-        .getPublicUrl(uniqueFileName);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("stash_files").getPublicUrl(uniqueFileName);
 
-      const { error: dbError } = await supabase
-        .from('files')
-        .insert([{
+      const { error: dbError } = await supabase.from("files").insert([
+        {
           phone_number: userPhone,
           file_name: file.name,
           file_url: publicUrl,
-          subject: metadata.subject || 'Uncategorized',
-          topic: metadata.topic || 'General',
-          type: file.type.includes('pdf') ? 'pdf' : 'image'
-        }]);
+          subject: metadata.subject || "Uncategorized",
+          topic: metadata.topic || "General",
+          type: file.type.includes("pdf") ? "pdf" : "image",
+        },
+      ]);
 
       if (dbError) throw dbError;
 
-      setUploadState('success');
-      setTimeout(() => setUploadState('idle'), 3000);
-
+      setUploadState("success");
+      setTimeout(() => setUploadState("idle"), 3000);
     } catch (err) {
       console.error("AI Upload failed:", err);
       alert("AI Analysis or Upload failed.");
-      setUploadState('idle');
+      setUploadState("idle");
     }
   };
 
@@ -306,46 +343,73 @@ export default function App() {
 
           {!showOtpScreen ? (
             <>
-              <p className="text-slate-400 mb-8">Create your profile to start stashing.</p>
+              <p className="text-slate-400 mb-8">
+                Create your profile to start stashing.
+              </p>
               <form onSubmit={handleSendOTP} className="flex flex-col gap-4">
-
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                  <input 
-                    type="text" placeholder="Your Name (e.g. Rohan)" 
-                    value={nameInput} onChange={(e) => setNameInput(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white outline-none focus:border-indigo-500 transition-colors" required
+                  <input
+                    type="text"
+                    placeholder="Your Name (e.g. Rohan)"
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white outline-none focus:border-indigo-500 transition-colors"
+                    required
                   />
                 </div>
 
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                  <input 
-                    type="text" placeholder="WhatsApp Number (e.g. 919876543210)" 
-                    value={loginInput} onChange={(e) => setLoginInput(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white outline-none focus:border-indigo-500 transition-colors" required
+                  <input
+                    type="text"
+                    placeholder="WhatsApp Number (e.g. 919876543210)"
+                    value={loginInput}
+                    onChange={(e) => setLoginInput(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white outline-none focus:border-indigo-500 transition-colors"
+                    required
                   />
                 </div>
-                <p className="text-xs text-slate-500 text-left -mt-2 ml-1">Include country code. No '+' sign.</p>
+                <p className="text-xs text-slate-500 text-left -mt-2 ml-1">
+                  Include country code. No '+' sign.
+                </p>
 
-                <button type="submit" disabled={isAuthenticating} className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-500/50 text-white font-bold py-3 rounded-xl transition-all mt-2">
+                <button
+                  type="submit"
+                  disabled={isAuthenticating}
+                  className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-500/50 text-white font-bold py-3 rounded-xl transition-all mt-2"
+                >
                   {isAuthenticating ? "Sending..." : "Send OTP via WhatsApp"}
                 </button>
               </form>
             </>
           ) : (
             <>
-              <p className="text-slate-400 mb-8">We sent a code to WhatsApp: <b>+{loginInput}</b></p>
+              <p className="text-slate-400 mb-8">
+                We sent a code to WhatsApp: <b>+{loginInput}</b>
+              </p>
               <form onSubmit={handleVerifyOTP} className="flex flex-col gap-4">
-                <input 
-                  type="text" placeholder="Enter 6-digit code" 
-                  value={otpInput} onChange={(e) => setOtpInput(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-white text-center tracking-widest text-xl outline-none focus:border-emerald-500" maxLength={6} required
+                <input
+                  type="text"
+                  placeholder="Enter 6-digit code"
+                  value={otpInput}
+                  onChange={(e) => setOtpInput(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-white text-center tracking-widest text-xl outline-none focus:border-emerald-500"
+                  maxLength={6}
+                  required
                 />
-                <button type="submit" disabled={isAuthenticating} className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white font-bold py-3 rounded-xl transition-all">
+                <button
+                  type="submit"
+                  disabled={isAuthenticating}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white font-bold py-3 rounded-xl transition-all"
+                >
                   {isAuthenticating ? "Verifying..." : "Verify Code & Join"}
                 </button>
-                <button type="button" onClick={() => setShowOtpScreen(false)} className="text-slate-400 text-sm hover:text-white mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowOtpScreen(false)}
+                  className="text-slate-400 text-sm hover:text-white mt-2"
+                >
                   Wrong number? Go back.
                 </button>
               </form>
@@ -358,33 +422,48 @@ export default function App() {
 
   const renderFolderView = (filesToGroup, title, type, emptyMsg) => {
     if (selectedFolder) {
-      const folderFiles = filesToGroup.filter(f => (f.subject || 'Uncategorized') === selectedFolder);
+      const folderFiles = filesToGroup.filter(
+        (f) => (f.subject || "Uncategorized") === selectedFolder,
+      );
       return (
         <div className="animate-in fade-in slide-in-from-right-4 duration-500">
           <div className="flex items-center gap-4 mb-6">
-            <button 
-              onClick={() => setSelectedFolder(null)} 
+            <button
+              onClick={() => setSelectedFolder(null)}
               className="text-slate-400 hover:text-white flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10 transition-all hover:bg-white/10 font-semibold text-sm shadow-sm"
             >
               ← Back
             </button>
             <h2 className="text-2xl font-bold text-white flex items-center gap-3 capitalize truncate">
-              <Folder className="text-indigo-400 w-7 h-7 shrink-0" fill="currentColor" opacity={0.2} /> 
+              <Folder
+                className="text-indigo-400 w-7 h-7 shrink-0"
+                fill="currentColor"
+                opacity={0.2}
+              />
               {selectedFolder}
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {folderFiles.map((file) => (
-              <FileCard key={file.id} file={file} type={type} contacts={contacts} />
+              <FileCard
+                key={file.id}
+                file={file}
+                type={type}
+                contacts={contacts}
+              />
             ))}
-            {folderFiles.length === 0 && <p className="text-slate-500 col-span-full">No files in this folder.</p>}
+            {folderFiles.length === 0 && (
+              <p className="text-slate-500 col-span-full">
+                No files in this folder.
+              </p>
+            )}
           </div>
         </div>
       );
     }
 
     const grouped = filesToGroup.reduce((acc, file) => {
-      const subj = file.subject || 'Uncategorized';
+      const subj = file.subject || "Uncategorized";
       if (!acc[subj]) acc[subj] = [];
       acc[subj].push(file);
       return acc;
@@ -396,88 +475,169 @@ export default function App() {
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-2xl font-bold text-white mb-6">{title}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {subjects.map(subj => (
-            <FolderCard 
-              key={subj} 
-              subject={subj} 
-              count={grouped[subj].length} 
-              onClick={() => setSelectedFolder(subj)} 
+          {subjects.map((subj) => (
+            <FolderCard
+              key={subj}
+              subject={subj}
+              count={grouped[subj].length}
+              onClick={() => setSelectedFolder(subj)}
             />
           ))}
-          {subjects.length === 0 && <p className="text-slate-500 col-span-full">{emptyMsg}</p>}
+          {subjects.length === 0 && (
+            <p className="text-slate-500 col-span-full">{emptyMsg}</p>
+          )}
         </div>
       </div>
     );
   };
 
   const renderContent = () => {
-    const myUploads = realFiles.filter(f => f.phone_number === userPhone && !f.shared_by);
-    const sharedWithMe = realFiles.filter(f => f.phone_number === userPhone && f.shared_by);
-    const sharedByMe = realFiles.filter(f => f.shared_by === userPhone);
-    const recentFiles = realFiles.filter(f => f.phone_number === userPhone).slice(0, 6);
+    const myUploads = realFiles.filter(
+      (f) => f.phone_number === userPhone && !f.shared_by,
+    );
+    const sharedWithMe = realFiles.filter(
+      (f) => f.phone_number === userPhone && f.shared_by,
+    );
+    const sharedByMe = realFiles.filter((f) => f.shared_by === userPhone);
+    const recentFiles = realFiles
+      .filter((f) => f.phone_number === userPhone)
+      .slice(0, 6);
 
     switch (activeTab) {
-      case 'home':
+      case "home":
         return (
           <div className="flex-1 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <section>
               <div className="flex items-end justify-between mb-5 px-2">
                 <div>
-                  <h2 className="text-xl font-bold text-white tracking-tight">Recent Files</h2>
-                  <p className="text-sm text-slate-400 mt-1">Jump back into your latest study materials.</p>
+                  <h2 className="text-xl font-bold text-white tracking-tight">
+                    Recent Files
+                  </h2>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Jump back into your latest study materials.
+                  </p>
                 </div>
-                <button onClick={() => setActiveTab('library')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">View All</button>
+                <button
+                  onClick={() => setActiveTab("library")}
+                  className="text-sm font-semibold text-indigo-400 hover:text-indigo-300"
+                >
+                  View All
+                </button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {recentFiles.map((file) => (
-                  <FileCard key={file.id} file={file} type="recent" contacts={contacts} />
+                  <FileCard
+                    key={file.id}
+                    file={file}
+                    type="recent"
+                    contacts={contacts}
+                  />
                 ))}
                 {recentFiles.length === 0 && !isLoadingDb && (
                   <div className="col-span-full text-center py-8 text-slate-500 bg-white/[0.02] rounded-xl border border-white/5">
-                    No files stashed yet. Upload one below or send it via WhatsApp!
+                    No files stashed yet. Upload one below or send it via
+                    WhatsApp!
                   </div>
                 )}
               </div>
             </section>
 
             <section className="flex-1 flex flex-col min-h-[320px]">
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-              <div onClick={handleUploadClick} onMouseEnter={() => setIsHoveringUpload(true)} onMouseLeave={() => setIsHoveringUpload(false)} className={`flex-1 w-full rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all duration-500 relative overflow-hidden backdrop-blur-xl ${uploadState === 'idle' ? 'bg-white/5 border-2 border-dashed border-white/20 hover:border-indigo-500/50' : uploadState === 'uploading' ? 'bg-gradient-to-br from-indigo-500/10 to-fuchsia-500/10 border-2 border-indigo-500/30' : 'bg-emerald-500/10 border-2 border-emerald-500/30'}`}>
-                {uploadState === 'idle' && (
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <div
+                onClick={handleUploadClick}
+                onMouseEnter={() => setIsHoveringUpload(true)}
+                onMouseLeave={() => setIsHoveringUpload(false)}
+                className={`flex-1 w-full rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all duration-500 relative overflow-hidden backdrop-blur-xl ${uploadState === "idle" ? "bg-white/5 border-2 border-dashed border-white/20 hover:border-indigo-500/50" : uploadState === "uploading" ? "bg-gradient-to-br from-indigo-500/10 to-fuchsia-500/10 border-2 border-indigo-500/30" : "bg-emerald-500/10 border-2 border-emerald-500/30"}`}
+              >
+                {uploadState === "idle" && (
                   <div className="flex flex-col items-center z-10 text-center px-4">
-                    <Plus size={48} className={`text-indigo-400 mb-4 transition-transform duration-500 ${isHoveringUpload ? 'rotate-90 scale-110' : ''}`} />
-                    <h2 className="text-2xl font-bold text-white mb-2">Stash a new file</h2>
-                    <p className="text-slate-400 px-2 md:px-8 text-sm">Click to upload. AI will automatically scan and categorize it.</p>
+                    <Plus
+                      size={48}
+                      className={`text-indigo-400 mb-4 transition-transform duration-500 ${isHoveringUpload ? "rotate-90 scale-110" : ""}`}
+                    />
+                    <h2 className="text-2xl font-bold text-white mb-2">
+                      Stash a new file
+                    </h2>
+                    <p className="text-slate-400 px-2 md:px-8 text-sm">
+                      Click to upload. AI will automatically scan and categorize
+                      it.
+                    </p>
                   </div>
                 )}
-                {uploadState === 'uploading' && (
-                  <div className="flex flex-col items-center z-10 text-center"><Loader size={48} className="text-indigo-400 animate-spin mb-4" /><h2 className="text-2xl font-bold text-white mb-2">AI Analyzing...</h2></div>
+                {uploadState === "uploading" && (
+                  <div className="flex flex-col items-center z-10 text-center">
+                    <Loader
+                      size={48}
+                      className="text-indigo-400 animate-spin mb-4"
+                    />
+                    <h2 className="text-2xl font-bold text-white mb-2">
+                      AI Analyzing...
+                    </h2>
+                  </div>
                 )}
-                {uploadState === 'success' && (
-                  <div className="flex flex-col items-center z-10 text-center"><CheckCircle size={48} className="text-emerald-400 mb-4" /><h2 className="text-2xl font-bold text-emerald-400 mb-2">File Categorized!</h2></div>
+                {uploadState === "success" && (
+                  <div className="flex flex-col items-center z-10 text-center">
+                    <CheckCircle size={48} className="text-emerald-400 mb-4" />
+                    <h2 className="text-2xl font-bold text-emerald-400 mb-2">
+                      File Categorized!
+                    </h2>
+                  </div>
                 )}
               </div>
             </section>
           </div>
         );
 
-      case 'library':
-        return renderFolderView(myUploads, "My Personal Library", "personal", "You haven't uploaded anything yet.");
-      case 'shared-with':
-        return renderFolderView(sharedWithMe, "Shared With Me", "shared-with", "No one has shared files with you yet.");
-      case 'shared-by':
-        return renderFolderView(sharedByMe, "Shared By Me", "shared-by", "You haven't sent any files to friends yet.");
+      case "library":
+        return renderFolderView(
+          myUploads,
+          "My Personal Library",
+          "personal",
+          "You haven't uploaded anything yet.",
+        );
+      case "shared-with":
+        return renderFolderView(
+          sharedWithMe,
+          "Shared With Me",
+          "shared-with",
+          "No one has shared files with you yet.",
+        );
+      case "shared-by":
+        return renderFolderView(
+          sharedByMe,
+          "Shared By Me",
+          "shared-by",
+          "You haven't sent any files to friends yet.",
+        );
       default:
         return null;
     }
   };
 
   return (
-    <div onMouseMove={handleMouseMove} className="flex flex-col md:flex-row h-screen w-full bg-[#09090b] text-slate-200 font-sans overflow-hidden relative z-0">
-
+    <div
+      onMouseMove={handleMouseMove}
+      className="flex flex-col md:flex-row h-screen w-full bg-[#09090b] text-slate-200 font-sans overflow-hidden relative z-0"
+    >
       {/* Background Orbs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/30 blur-[120px] pointer-events-none -z-10" style={{ transform: `translate(${mousePos.x * 40}px, ${mousePos.y * 40}px)` }} />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-fuchsia-600/20 blur-[120px] pointer-events-none -z-10" style={{ transform: `translate(${mousePos.x * -50}px, ${mousePos.y * -50}px)` }} />
+      <div
+        className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/30 blur-[120px] pointer-events-none -z-10"
+        style={{
+          transform: `translate(${mousePos.x * 40}px, ${mousePos.y * 40}px)`,
+        }}
+      />
+      <div
+        className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-fuchsia-600/20 blur-[120px] pointer-events-none -z-10"
+        style={{
+          transform: `translate(${mousePos.x * -50}px, ${mousePos.y * -50}px)`,
+        }}
+      />
 
       {/* Mobile Top Header */}
       <div className="md:hidden flex items-center justify-between p-4 bg-white/5 border-b border-white/10 z-40 backdrop-blur-xl shrink-0">
@@ -485,38 +645,90 @@ export default function App() {
           <CloudLightning className="text-indigo-400 w-6 h-6" />
           <span className="font-bold text-xl text-white">Stash</span>
         </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-white p-1">
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="text-white p-1"
+        >
           {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
         </button>
       </div>
 
       {/* Responsive Sidebar */}
-      <aside className={`
+      <aside
+        className={`
         fixed md:static inset-y-0 left-0 z-50 w-[260px] bg-[#09090b] md:bg-white/[0.02] border-r border-white/10 p-6 flex flex-col backdrop-blur-2xl transition-transform duration-300
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
+        ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} 
         md:translate-x-0
-      `}>
+      `}
+      >
         <div className="mb-10 pl-2 hidden md:flex items-center gap-3">
           <CloudLightning className="text-indigo-400 w-8 h-8" />
           <span className="font-bold text-2xl text-white">Stash</span>
         </div>
 
         <nav className="flex flex-col gap-2 mt-12 md:mt-0">
-          <NavItem icon={<Home size={18} />} label="Home" active={activeTab === 'home'} onClick={() => { setActiveTab('home'); setIsMobileMenuOpen(false); }} />
-          <NavItem icon={<BookOpen size={18} />} label="My Library" active={activeTab === 'library'} onClick={() => { setActiveTab('library'); setIsMobileMenuOpen(false); }} />
-          <NavItem icon={<Share2 size={18} />} label="Shared with me" active={activeTab === 'shared-with'} onClick={() => { setActiveTab('shared-with'); setIsMobileMenuOpen(false); }} />
-          <NavItem icon={<Send size={18} />} label="Shared by me" active={activeTab === 'shared-by'} onClick={() => { setActiveTab('shared-by'); setIsMobileMenuOpen(false); }} />
+          <NavItem
+            icon={<Home size={18} />}
+            label="Home"
+            active={activeTab === "home"}
+            onClick={() => {
+              setActiveTab("home");
+              setIsMobileMenuOpen(false);
+            }}
+          />
+          <NavItem
+            icon={<BookOpen size={18} />}
+            label="My Library"
+            active={activeTab === "library"}
+            onClick={() => {
+              setActiveTab("library");
+              setIsMobileMenuOpen(false);
+            }}
+          />
+          <NavItem
+            icon={<Share2 size={18} />}
+            label="Shared with me"
+            active={activeTab === "shared-with"}
+            onClick={() => {
+              setActiveTab("shared-with");
+              setIsMobileMenuOpen(false);
+            }}
+          />
+          <NavItem
+            icon={<Send size={18} />}
+            label="Shared by me"
+            active={activeTab === "shared-by"}
+            onClick={() => {
+              setActiveTab("shared-by");
+              setIsMobileMenuOpen(false);
+            }}
+          />
         </nav>
 
         <div className="mt-auto pt-8 flex flex-col gap-3">
           <div className="bg-[#25D366]/10 border border-[#25D366]/20 rounded-xl p-4 text-center hidden md:block">
-            <h4 className="text-[#25D366] font-bold text-sm mb-2">Stash on the go</h4>
-            <p className="text-slate-400 text-xs mb-4">Send study material directly to our AI WhatsApp bot.</p>
-            <button onClick={() => window.open(`https://wa.me/${BOT_PHONE_NUMBER}?text=Hey%20Stash!`, '_blank')} className="w-full bg-[#25D366] hover:bg-[#20b858] text-gray-900 font-bold py-2 rounded-lg text-sm transition-all">
+            <h4 className="text-[#25D366] font-bold text-sm mb-2">
+              Stash on the go
+            </h4>
+            <p className="text-slate-400 text-xs mb-4">
+              Send study material directly to our AI WhatsApp bot.
+            </p>
+            <button
+              onClick={() =>
+                window.open(
+                  `https://wa.me/${BOT_PHONE_NUMBER}?text=Hey%20Stash!`,
+                  "_blank",
+                )
+              }
+              className="w-full bg-[#25D366] hover:bg-[#20b858] text-gray-900 font-bold py-2 rounded-lg text-sm transition-all"
+            >
               Open WhatsApp
             </button>
           </div>
-          <button onClick={handleLogout} className="flex items-center justify-center gap-2 w-full text-slate-400 hover:text-red-400 hover:bg-red-400/10 py-3 rounded-xl font-semibold text-sm transition-all">
+          <button
+            onClick={handleLogout}
+            className="flex items-center justify-center gap-2 w-full text-slate-400 hover:text-red-400 hover:bg-red-400/10 py-3 rounded-xl font-semibold text-sm transition-all"
+          >
             <LogOut size={16} /> Logout
           </button>
         </div>
@@ -524,17 +736,23 @@ export default function App() {
 
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+        <div
+          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
       )}
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col p-4 md:p-8 gap-4 md:gap-8 z-10 w-full overflow-hidden relative">
-
         {/* Search Header */}
         <div className="w-full bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between px-3 md:px-4 py-3 backdrop-blur-xl shrink-0">
           <div className="flex items-center flex-1">
             <Search className="text-slate-400 w-5 h-5 mr-3 shrink-0" />
-            <input type="text" placeholder="Search your stash..." className="bg-transparent outline-none w-full text-white text-sm" />
+            <input
+              type="text"
+              placeholder="Search your stash..."
+              className="bg-transparent outline-none w-full text-white text-sm"
+            />
           </div>
           <div className="hidden md:flex text-sm font-semibold text-indigo-300 bg-indigo-500/10 px-4 py-2 rounded-lg border border-indigo-500/20 items-center gap-2 ml-4">
             <User size={16} /> Hey, {userName || userPhone} 👋
@@ -550,9 +768,8 @@ export default function App() {
         {showOnboardingPopup && (
           <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
             <div className="bg-[#1E1E2E] border border-white/10 rounded-2xl p-8 max-w-sm w-full text-center relative shadow-2xl animate-in zoom-in-95 duration-300">
-
-              <button 
-                onClick={handleClosePopup} 
+              <button
+                onClick={handleClosePopup}
                 className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
                 aria-label="Close"
               >
@@ -563,20 +780,22 @@ export default function App() {
                 <CloudLightning className="text-[#25D366] w-8 h-8" />
               </div>
 
-              <h2 className="text-2xl font-bold text-white mb-2">Stash on the go ⚡</h2>
-              <p className="text-slate-400 mb-6">Send study material directly to our AI WhatsApp bot.</p>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Stash on the go ⚡
+              </h2>
+              <p className="text-slate-400 mb-6">
+                Send study material directly to our AI WhatsApp bot.
+              </p>
 
-              <button 
+              <button
                 onClick={handleOpenWhatsAppClick}
                 className="w-full bg-[#25D366] hover:bg-[#20b858] text-gray-900 font-bold py-3 rounded-xl transition-all shadow-lg shadow-[#25D366]/20"
               >
                 Open WhatsApp
               </button>
-
             </div>
           </div>
         )}
-
       </main>
     </div>
   );
@@ -585,8 +804,8 @@ export default function App() {
 // Folder Card Component
 function FolderCard({ subject, count, onClick }) {
   return (
-    <div 
-      onClick={onClick} 
+    <div
+      onClick={onClick}
       className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col hover:border-indigo-500/50 hover:bg-white/10 cursor-pointer transition-all h-full min-h-[160px] shadow-sm group"
     >
       <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-indigo-500/10 text-indigo-400 mb-4 shrink-0 border border-indigo-500/20 group-hover:bg-indigo-500/20 transition-colors">
@@ -598,7 +817,7 @@ function FolderCard({ subject, count, onClick }) {
           {subject}
         </h3>
         <p className="text-sm font-semibold text-indigo-300">
-          {count} {count === 1 ? 'file' : 'files'}
+          {count} {count === 1 ? "file" : "files"}
         </p>
       </div>
     </div>
@@ -607,12 +826,18 @@ function FolderCard({ subject, count, onClick }) {
 
 // File Card Component
 function FileCard({ file, type, contacts }) {
-  const dateStr = file.created_at 
-    ? new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
-    : 'Unknown Date';
+  const dateStr = file.created_at
+    ? new Date(file.created_at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "Unknown Date";
 
   // 🛑 THE FIX: Smart check! If 'type' is missing, check the file name extension for images
-  const isImage = file.type === 'image' || (file.file_name && /\.(jpg|jpeg|png|gif|webp)$/i.test(file.file_name));
+  const isImage =
+    file.type === "image" ||
+    (file.file_name && /\.(jpg|jpeg|png|gif|webp)$/i.test(file.file_name));
 
   let sharedBadge = (
     <span className="text-xs font-semibold text-slate-300 bg-slate-700/50 px-2.5 py-1 rounded-md border border-slate-600/50 w-fit mt-1">
@@ -620,27 +845,28 @@ function FileCard({ file, type, contacts }) {
     </span>
   );
 
-  if (type === 'shared-with' || (type === 'recent' && file.shared_by)) {
+  if (type === "shared-with" || (type === "recent" && file.shared_by)) {
     sharedBadge = (
       <span className="text-xs font-bold text-fuchsia-300 bg-fuchsia-500/20 px-2.5 py-1 rounded-md border border-fuchsia-500/30 w-fit mt-1 truncate max-w-full">
-        Shared by {contacts[file.shared_by] || '+' + file.shared_by}
+        Shared by {contacts[file.shared_by] || "+" + file.shared_by}
       </span>
     );
-  } else if (type === 'shared-by') {
+  } else if (type === "shared-by") {
     sharedBadge = (
       <span className="text-xs font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-md border border-emerald-500/30 w-fit mt-1 truncate max-w-full">
-        Sent to {contacts[file.phone_number] || '+' + file.phone_number}
+        Sent to {contacts[file.phone_number] || "+" + file.phone_number}
       </span>
     );
   }
 
-  const displayTitle = file.topic && file.topic !== 'General' 
-    ? file.topic 
-    : `${file.subject || 'Document'} Notes`;
+  const displayTitle =
+    file.topic && file.topic !== "General"
+      ? file.topic
+      : `${file.subject || "Document"} Notes`;
 
   return (
-    <div 
-      onClick={() => window.open(file.file_url, '_blank')} 
+    <div
+      onClick={() => window.open(file.file_url, "_blank")}
       className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col hover:border-indigo-500/50 hover:bg-white/10 cursor-pointer transition-all h-full min-h-[220px]"
     >
       {/* 🛑 Updated Icon Check */}
@@ -654,11 +880,11 @@ function FileCard({ file, type, contacts }) {
         </h3>
 
         <p className="text-sm font-semibold text-indigo-300 mb-1 flex items-center gap-2 overflow-hidden">
-          <span className="truncate">{file.subject || 'Uncategorized'}</span>
+          <span className="truncate">{file.subject || "Uncategorized"}</span>
 
           {/* 🛑 Updated Badge Check */}
           <span className="text-[9px] bg-white/10 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">
-            {isImage ? 'IMG' : 'PDF'}
+            {isImage ? "IMG" : "PDF"}
           </span>
         </p>
 
@@ -674,7 +900,10 @@ function FileCard({ file, type, contacts }) {
 
 function NavItem({ icon, label, active, onClick }) {
   return (
-    <button onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all w-full text-left ${active ? 'bg-indigo-500/10 text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}>
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all w-full text-left ${active ? "bg-indigo-500/10 text-indigo-400 font-bold" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"}`}
+    >
       {icon} <span>{label}</span>
     </button>
   );
