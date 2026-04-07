@@ -329,93 +329,119 @@ export default function App() {
     setMousePos({ x, y });
   };
 
+  // 🛑 NEW: Split-Screen SaaS Layout for the Login Screen
   if (!userPhone) {
     return (
-      <div className="flex h-screen w-full bg-[#09090b] items-center justify-center relative overflow-hidden p-4">
-        <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-indigo-600/20 blur-[120px]" />
-        <div className="bg-white/5 border border-white/10 p-8 md:p-10 rounded-3xl backdrop-blur-xl w-full max-w-md z-10 text-center shadow-2xl">
-          <div className="flex justify-center mb-6">
-            <div className="bg-indigo-500/20 p-4 rounded-full">
-              <CloudLightning className="text-indigo-400 w-12 h-12" />
+      <div className="flex h-screen w-full bg-[#09090b] relative overflow-hidden font-sans">
+
+        {/* Background Orbs */}
+        <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-fuchsia-600/10 blur-[120px] pointer-events-none" />
+
+        {/* LEFT COLUMN (Value Proposition - Hidden on Mobile, Shows on Desktop) */}
+        <div className="hidden lg:flex w-1/2 flex-col justify-center px-16 xl:px-24 z-10 border-r border-white/5 bg-black/20 backdrop-blur-sm">
+          <div className="bg-indigo-500/10 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
+            <CloudLightning className="text-indigo-400 w-8 h-8" />
+          </div>
+
+          <h1 className="text-5xl xl:text-6xl font-extrabold text-white mb-6 leading-tight tracking-tight">
+            Never lose a <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-fuchsia-400">study guide</span> in the group chat again.
+          </h1>
+
+          <p className="text-lg text-slate-400 mb-12 max-w-lg leading-relaxed">
+            Stash is your AI-powered library. Just forward your notes, PDFs, and whiteboard photos to our WhatsApp bot, and we handle the rest.
+          </p>
+
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center gap-5">
+              <div className="bg-indigo-500/10 p-3.5 rounded-xl border border-indigo-500/20"><Folder className="text-indigo-400 w-6 h-6" /></div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Auto-Categorization</h3>
+                <p className="text-slate-400 text-sm">AI instantly tags subjects and topics.</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-5">
+              <div className="bg-emerald-500/10 p-3.5 rounded-xl border border-emerald-500/20"><Search className="text-emerald-400 w-6 h-6" /></div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Instant Retrieval</h3>
+                <p className="text-slate-400 text-sm">Type /stash to pull up exact notes.</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-5">
+              <div className="bg-fuchsia-500/10 p-3.5 rounded-xl border border-fuchsia-500/20"><Share2 className="text-fuchsia-400 w-6 h-6" /></div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Seamless Sharing</h3>
+                <p className="text-slate-400 text-sm">Push notes directly to friends' libraries.</p>
+              </div>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Join Stash</h1>
-
-          {!showOtpScreen ? (
-            <>
-              <p className="text-slate-400 mb-8">
-                Create your profile to start stashing.
-              </p>
-              <form onSubmit={handleSendOTP} className="flex flex-col gap-4">
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Your Name (e.g. Rohan)"
-                    value={nameInput}
-                    onChange={(e) => setNameInput(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white outline-none focus:border-indigo-500 transition-colors"
-                    required
-                  />
-                </div>
-
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="WhatsApp Number (e.g. 919876543210)"
-                    value={loginInput}
-                    onChange={(e) => setLoginInput(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white outline-none focus:border-indigo-500 transition-colors"
-                    required
-                  />
-                </div>
-                <p className="text-xs text-slate-500 text-left -mt-2 ml-1">
-                  Include country code. No '+' sign.
-                </p>
-
-                <button
-                  type="submit"
-                  disabled={isAuthenticating}
-                  className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-500/50 text-white font-bold py-3 rounded-xl transition-all mt-2"
-                >
-                  {isAuthenticating ? "Sending..." : "Send OTP via WhatsApp"}
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <p className="text-slate-400 mb-8">
-                We sent a code to WhatsApp: <b>+{loginInput}</b>
-              </p>
-              <form onSubmit={handleVerifyOTP} className="flex flex-col gap-4">
-                <input
-                  type="text"
-                  placeholder="Enter 6-digit code"
-                  value={otpInput}
-                  onChange={(e) => setOtpInput(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-white text-center tracking-widest text-xl outline-none focus:border-emerald-500"
-                  maxLength={6}
-                  required
-                />
-                <button
-                  type="submit"
-                  disabled={isAuthenticating}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white font-bold py-3 rounded-xl transition-all"
-                >
-                  {isAuthenticating ? "Verifying..." : "Verify Code & Join"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowOtpScreen(false)}
-                  className="text-slate-400 text-sm hover:text-white mt-2"
-                >
-                  Wrong number? Go back.
-                </button>
-              </form>
-            </>
-          )}
         </div>
+
+        {/* RIGHT COLUMN (The Login Form) */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-6 z-10 relative">
+          <div className="bg-white/5 border border-white/10 p-8 md:p-10 rounded-3xl backdrop-blur-xl w-full max-w-md text-center shadow-2xl">
+
+            {/* Mobile Logo (Only shows on small screens) */}
+            <div className="flex lg:hidden justify-center mb-6">
+              <div className="bg-indigo-500/20 p-4 rounded-full border border-indigo-500/30">
+                <CloudLightning className="text-indigo-400 w-10 h-10" />
+              </div>
+            </div>
+
+            <h2 className="text-3xl font-bold text-white mb-2">Join Stash</h2>
+
+            {!showOtpScreen ? (
+              <>
+                <p className="text-slate-400 mb-8 text-sm">Create your profile to start stashing.</p>
+                <form onSubmit={handleSendOTP} className="flex flex-col gap-4">
+
+                  <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 w-5 h-5 transition-colors" />
+                    <input 
+                      type="text" placeholder="Your Name (e.g. Rohan)" 
+                      value={nameInput} onChange={(e) => setNameInput(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white outline-none focus:border-indigo-500 focus:bg-black/60 transition-all" required
+                    />
+                  </div>
+
+                  <div className="relative group">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 w-5 h-5 transition-colors" />
+                    <input 
+                      type="text" placeholder="WhatsApp Number (e.g. 919876543210)" 
+                      value={loginInput} onChange={(e) => setLoginInput(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white outline-none focus:border-indigo-500 focus:bg-black/60 transition-all" required
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 text-left ml-1 mt-1">Include country code. No '+' sign.</p>
+
+                  <button type="submit" disabled={isAuthenticating} className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-500/50 text-white font-bold py-3.5 rounded-xl transition-all mt-4 shadow-lg shadow-indigo-500/20">
+                    {isAuthenticating ? "Sending..." : "Send OTP via WhatsApp"}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
+                <p className="text-slate-400 mb-8 text-sm">We sent a secure code to WhatsApp:<br/><b className="text-white text-base mt-1 block">+{loginInput}</b></p>
+                <form onSubmit={handleVerifyOTP} className="flex flex-col gap-4">
+                  <input 
+                    type="text" placeholder="Enter 6-digit code" 
+                    value={otpInput} onChange={(e) => setOtpInput(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 px-4 text-white text-center tracking-widest text-2xl font-mono outline-none focus:border-emerald-500 focus:bg-black/60 transition-all" maxLength={6} required
+                  />
+                  <button type="submit" disabled={isAuthenticating} className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white font-bold py-3.5 rounded-xl transition-all mt-2 shadow-lg shadow-emerald-500/20">
+                    {isAuthenticating ? "Verifying..." : "Verify Code & Join"}
+                  </button>
+                  <button type="button" onClick={() => setShowOtpScreen(false)} className="text-slate-500 text-sm hover:text-white mt-4 underline decoration-slate-600 underline-offset-4 transition-colors">
+                    Wrong number? Go back.
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+
       </div>
     );
   }
