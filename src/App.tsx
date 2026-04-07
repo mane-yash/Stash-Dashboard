@@ -400,8 +400,14 @@ export default function App() {
                   <div className="relative group">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 w-5 h-5 transition-colors" />
                     <input 
-                      type="text" placeholder="Your Name (e.g. Rohan)" 
-                      value={nameInput} onChange={(e) => setNameInput(e.target.value)}
+                      type="text" 
+                      placeholder="Your Name (e.g. Rohan)" 
+                      value={nameInput} 
+                      // 🛑 NEW: Prevents emojis and special characters instantly!
+                      onChange={(e) => {
+                        const onlyLettersAndSpaces = e.target.value.replace(/[^a-zA-Z\s]/g, "");
+                        setNameInput(onlyLettersAndSpaces);
+                      }}
                       className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white outline-none focus:border-indigo-500 focus:bg-black/60 transition-all" required
                     />
                   </div>
@@ -409,8 +415,15 @@ export default function App() {
                   <div className="relative group">
                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 w-5 h-5 transition-colors" />
                     <input 
-                      type="text" placeholder="WhatsApp Number (e.g. 919876543210)" 
-                      value={loginInput} onChange={(e) => setLoginInput(e.target.value)}
+                      type="text" 
+                      placeholder="WhatsApp Number (e.g. 919876543210)" 
+                      value={loginInput} 
+                      // 🛑 NEW: Prevents letters and limits to exactly 12 digits!
+                      onChange={(e) => {
+                        const onlyNumbers = e.target.value.replace(/\D/g, "");
+                        setLoginInput(onlyNumbers);
+                      }}
+                      maxLength={12}
                       className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white outline-none focus:border-indigo-500 focus:bg-black/60 transition-all" required
                     />
                   </div>
@@ -427,7 +440,12 @@ export default function App() {
                 <form onSubmit={handleVerifyOTP} className="flex flex-col gap-4">
                   <input 
                     type="text" placeholder="Enter 6-digit code" 
-                    value={otpInput} onChange={(e) => setOtpInput(e.target.value)}
+                    value={otpInput} 
+                    // 🛑 Ensure OTP is also only numbers
+                    onChange={(e) => {
+                      const onlyNumbers = e.target.value.replace(/\D/g, "");
+                      setOtpInput(onlyNumbers);
+                    }}
                     className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 px-4 text-white text-center tracking-widest text-2xl font-mono outline-none focus:border-emerald-500 focus:bg-black/60 transition-all" maxLength={6} required
                   />
                   <button type="submit" disabled={isAuthenticating} className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white font-bold py-3.5 rounded-xl transition-all mt-2 shadow-lg shadow-emerald-500/20">
