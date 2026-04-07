@@ -61,7 +61,6 @@ export default function App() {
   const [isLoadingDb, setIsLoadingDb] = useState(true);
   const [contacts, setContacts] = useState({});
 
-  // 🛑 NEW: State for the Onboarding Popup
   const [showOnboardingPopup, setShowOnboardingPopup] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -182,6 +181,14 @@ export default function App() {
       if (data.success) {
         const finalName = nameInput.trim();
 
+        // 🛑 NEW: Check if the user already exists in the database BEFORE saving them
+        const { data: existingUsers } = await supabase
+          .from("users")
+          .select("phone_number")
+          .eq("phone_number", cleanPhone);
+          
+        const isFirstTimeUser = !existingUsers || existingUsers.length === 0;
+
         await supabase.from("users").upsert(
           [
             {
@@ -200,8 +207,10 @@ export default function App() {
         setShowOtpScreen(false);
         setOtpInput("");
 
-        // 🛑 NEW: Trigger the popup exactly when they successfully log in
-        setShowOnboardingPopup(true);
+        // 🛑 NEW: Only show the pop-up if they are a brand new user!
+        if (isFirstTimeUser) {
+          setShowOnboardingPopup(true);
+        }
       } else {
         alert("Invalid OTP code! Please try again.");
       }
@@ -211,7 +220,6 @@ export default function App() {
     setIsAuthenticating(false);
   };
 
-  // 🛑 NEW: The trigger function for the backend
   const triggerWhatsAppMessage = async (delayAmount) => {
     try {
       await fetch(`${BACKEND_URL}/api/trigger-onboarding`, {
@@ -231,7 +239,6 @@ export default function App() {
     }
   };
 
-  // 🛑 NEW: Actions for the Popup buttons
   const handleOpenWhatsAppClick = () => {
     setShowOnboardingPopup(false);
     triggerWhatsAppMessage(0); // Instantly send message
@@ -329,11 +336,10 @@ export default function App() {
     setMousePos({ x, y });
   };
 
-  // 🛑 NEW: Split-Screen SaaS Layout for the Login Screen
   if (!userPhone) {
     return (
       <div className="flex h-screen w-full bg-[#09090b] relative overflow-hidden font-sans">
-
+        
         {/* Background Orbs */}
         <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-fuchsia-600/10 blur-[120px] pointer-events-none" />
@@ -343,11 +349,11 @@ export default function App() {
           <div className="bg-indigo-500/10 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
             <CloudLightning className="text-indigo-400 w-8 h-8" />
           </div>
-
+          
           <h1 className="text-5xl xl:text-6xl font-extrabold text-white mb-6 leading-tight tracking-tight">
             Never lose a <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-fuchsia-400">study guide</span> in the group chat again.
           </h1>
-
+          
           <p className="text-lg text-slate-400 mb-12 max-w-lg leading-relaxed">
             Stash is your AI-powered library. Just forward your notes, PDFs, and whiteboard photos to our WhatsApp bot, and we handle the rest.
           </p>
@@ -360,7 +366,7 @@ export default function App() {
                 <p className="text-slate-400 text-sm">AI instantly tags subjects and topics.</p>
               </div>
             </div>
-
+            
             <div className="flex items-center gap-5">
               <div className="bg-emerald-500/10 p-3.5 rounded-xl border border-emerald-500/20"><Search className="text-emerald-400 w-6 h-6" /></div>
               <div>
@@ -368,7 +374,7 @@ export default function App() {
                 <p className="text-slate-400 text-sm">Type /stash to pull up exact notes.</p>
               </div>
             </div>
-
+            
             <div className="flex items-center gap-5">
               <div className="bg-fuchsia-500/10 p-3.5 rounded-xl border border-fuchsia-500/20"><Share2 className="text-fuchsia-400 w-6 h-6" /></div>
               <div>
@@ -382,14 +388,14 @@ export default function App() {
         {/* RIGHT COLUMN (The Login Form) */}
         <div className="w-full lg:w-1/2 flex items-center justify-center p-6 z-10 relative">
           <div className="bg-white/5 border border-white/10 p-8 md:p-10 rounded-3xl backdrop-blur-xl w-full max-w-md text-center shadow-2xl">
-
+            
             {/* Mobile Logo (Only shows on small screens) */}
             <div className="flex lg:hidden justify-center mb-6">
               <div className="bg-indigo-500/20 p-4 rounded-full border border-indigo-500/30">
                 <CloudLightning className="text-indigo-400 w-10 h-10" />
               </div>
             </div>
-
+            
             <h2 className="text-3xl font-bold text-white mb-2">Join Stash</h2>
 
             {!showOtpScreen ? (
@@ -403,7 +409,6 @@ export default function App() {
                       type="text" 
                       placeholder="Your Name (e.g. Rohan)" 
                       value={nameInput} 
-                      // 🛑 NEW: Prevents emojis and special characters instantly!
                       onChange={(e) => {
                         const onlyLettersAndSpaces = e.target.value.replace(/[^a-zA-Z\s]/g, "");
                         setNameInput(onlyLettersAndSpaces);
@@ -418,7 +423,6 @@ export default function App() {
                       type="text" 
                       placeholder="WhatsApp Number (e.g. 919876543210)" 
                       value={loginInput} 
-                      // 🛑 NEW: Prevents letters and limits to exactly 12 digits!
                       onChange={(e) => {
                         const onlyNumbers = e.target.value.replace(/\D/g, "");
                         setLoginInput(onlyNumbers);
@@ -441,7 +445,6 @@ export default function App() {
                   <input 
                     type="text" placeholder="Enter 6-digit code" 
                     value={otpInput} 
-                    // 🛑 Ensure OTP is also only numbers
                     onChange={(e) => {
                       const onlyNumbers = e.target.value.replace(/\D/g, "");
                       setOtpInput(onlyNumbers);
@@ -878,7 +881,6 @@ function FileCard({ file, type, contacts }) {
       })
     : "Unknown Date";
 
-  // 🛑 THE FIX: Smart check! If 'type' is missing, check the file name extension for images
   const isImage =
     file.type === "image" ||
     (file.file_name && /\.(jpg|jpeg|png|gif|webp)$/i.test(file.file_name));
@@ -913,7 +915,6 @@ function FileCard({ file, type, contacts }) {
       onClick={() => window.open(file.file_url, "_blank")}
       className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col hover:border-indigo-500/50 hover:bg-white/10 cursor-pointer transition-all h-full min-h-[220px]"
     >
-      {/* 🛑 Updated Icon Check */}
       <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-500/20 text-indigo-400 mb-4 shrink-0 shadow-sm border border-indigo-500/20">
         {isImage ? <ImageIcon size={24} /> : <FileText size={24} />}
       </div>
@@ -926,7 +927,6 @@ function FileCard({ file, type, contacts }) {
         <p className="text-sm font-semibold text-indigo-300 mb-1 flex items-center gap-2 overflow-hidden">
           <span className="truncate">{file.subject || "Uncategorized"}</span>
 
-          {/* 🛑 Updated Badge Check */}
           <span className="text-[9px] bg-white/10 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">
             {isImage ? "IMG" : "PDF"}
           </span>
